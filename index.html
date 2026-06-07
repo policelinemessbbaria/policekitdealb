@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title><?= getSettings().sitename || 'কমিউনিটি মার্কেটপ্লেস' ?></title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SweetAlert2 Library -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f9fafb; padding-bottom: 80px; }
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+        .nav-active { color: #2563eb; font-weight: bold; }
+        
+        /* Banner Slider Styles */
+        .banner-slide { min-width: 100%; height: 100%; transition: transform 0.5s ease-in-out; }
+        .dot { height: 8px; width: 8px; background-color: #bbb; border-radius: 50%; display: inline-block; transition: background-color 0.3s; opacity: 0.5; cursor: pointer; }
+        .dot-active { background-color: #2563eb; opacity: 1; transform: scale(1.2); }
+        
+        /* Custom Scrollbar hide */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Highlight Animation for Search */
+        @keyframes highlightPulse {
+            0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(37, 99, 235, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+        }
+        .search-highlight {
+            animation: highlightPulse 1.5s infinite;
+            border: 2px solid #2563eb;
+        }
+
+        /* Skeleton Loader Shimmer Effect */
+        .skeleton {
+            background: #e5e7eb;
+            background: linear-gradient(110deg, #ececec 8%, #f5f5f5 18%, #ececec 33%);
+            background-size: 200% 100%;
+            animation: 1.5s shine linear infinite;
+            border-radius: 0.5rem;
+        }
+        @keyframes shine {
+            to { background-position-x: -200%; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- UPDATED HEADER WITH SKELETON LOADER -->
+    <header class="bg-white shadow-sm sticky top-0 z-50 px-4 py-3 flex justify-between items-center gap-2">
+        
+        <!-- HEADER SKELETON (Visible initially) -->
+        <div id="headerSkeleton" class="flex items-center space-x-2 shrink-0">
+            <div class="h-8 w-16 skeleton rounded"></div> <!-- Logo placeholder -->
+            <div class="h-6 w-24 skeleton rounded hidden sm:block"></div> <!-- Text placeholder -->
+        </div>
+
+        <!-- REAL HEADER CONTENT (Hidden initially) -->
+        <div id="realHeaderContent" class="flex items-center space-x-2 shrink-0 hidden">
+            <img id="siteLogo" src="" alt="Logo" class="h-8 object-contain">
+            <span id="siteName" class="text-lg font-bold text-gray-800 hidden sm:block"></span>
+        </div>
+        
+        <!-- Search Bar Container -->
+        <div class="flex-1 max-w-md relative">
+            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
+            </div>
+            <input type="text" id="searchInput" class="block w-full p-2 pl-10 pr-20 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500" placeholder="প্রোডাক্ট খুঁজুন...">
+            
+            <div id="searchClearBtn" class="absolute inset-y-0 right-12 flex items-center pr-3 cursor-pointer hidden text-gray-400 hover:text-gray-600" onclick="clearSearch()">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+
+            <button onclick="performSearch()" class="absolute inset-y-1 right-1 bg-blue-600 text-white px-3 rounded-md text-xs font-bold hover:bg-blue-700 shadow-sm">
+                Go
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto px-4 py-4">
+
+        <!-- SKELETON LOADER SECTION (Visible on Load) -->
+        <section id="skeletonLoader" class="view-section active">
+            <div class="w-full aspect-video rounded-xl mb-6 skeleton"></div>
+            <div class="h-20 rounded-2xl mb-6 skeleton"></div>
+            <div class="h-4 w-24 rounded mb-3 skeleton"></div>
+            <div class="flex space-x-3 overflow-hidden mb-4">
+                <div class="w-16 h-8 rounded-full skeleton shrink-0"></div>
+                <div class="w-16 h-8 rounded-full skeleton shrink-0"></div>
+                <div class="w-16 h-8 rounded-full skeleton shrink-0"></div>
+                <div class="w-16 h-8 rounded-full skeleton shrink-0"></div>
+            </div>
+            <div class="h-4 w-32 rounded mb-3 skeleton"></div>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="h-0 pb-[100%] relative skeleton rounded-xl"></div>
+                <div class="h-0 pb-[100%] relative skeleton rounded-xl"></div>
+                <div class="h-0 pb-[100%] relative skeleton rounded-xl"></div>
+                <div class="h-0 pb-[100%] relative skeleton rounded-xl"></div>
+            </div>
+        </section>
+
+        <!-- HOME VIEW -->
+        <section id="homeView" class="view-section">
+            <!-- Banner Section -->
+            <div id="bannerContainer" class="relative w-full aspect-video overflow-hidden rounded-xl mb-6 bg-gray-100 shadow-sm">
+                <div id="bannerSlidesWrapper" class="flex h-full transition-transform duration-500 ease-out cursor-pointer"></div>
+                <div id="bannerDots" class="absolute bottom-3 left-0 right-0 flex justify-center space-x-2 px-4"></div>
+            </div>
+
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-5 text-white mb-6 shadow-md">
+                <h2 class="text-xl font-bold mb-1">স্বাগতম আমাদের কমিউনিটি মার্কেটে!</h2>
+                <p class="text-xs opacity-90">১ কিলোমিটার এরিয়ার মধ্যে কর্মীদের অভ্যন্তরীণ কেনাবেচা ও এক্সচেঞ্জ প্ল্যাটফর্ম।</p>
+            </div>
+
+            <h3 class="font-bold text-gray-800 mb-3"><i class="fa-solid fa-layer-group text-blue-600 mr-1"></i> ক্যাটাগরি সমূহ</h3>
+            <div id="categoriesContainer" class="flex space-x-2 overflow-x-auto pb-3 mb-4 scrollbar-hide"></div>
+
+            <h3 class="font-bold text-gray-800 mb-3"><i class="fa-solid fa-sparkles text-amber-500 mr-1"></i> সাম্প্রতিক বিজ্ঞাপনসমূহ</h3>
+            
+            <!-- Ad Type Filter Buttons -->
+            <div id="adTypeFilters" class="flex space-x-2 overflow-x-auto pb-3 mb-2 scrollbar-hide">
+                <!-- Buttons injected by JS -->
+            </div>
+
+            <div id="productsGrid" class="grid grid-cols-2 gap-3"></div>
+            <div id="noProductsMsg" class="text-center py-8 text-gray-500 hidden">কোনো বিজ্ঞাপন পাওয়া যায়নি।</div>
+        </section>
+
+        <section id="productDetailView" class="view-section">
+            
+            <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
+                <!-- aspect-square for square ratio -->
+                <div class="relative bg-gray-100 aspect-square">
+                    <img id="detailImgMain" src="" alt="Product" class="w-full h-full object-cover">
+                    <span id="detailBadge" class="absolute top-2 right-2 text-[10px] font-bold px-2 py-1 rounded-md shadow-sm bg-gray-200 text-gray-600 hidden"></span>
+                    <div id="detailThumbnails" class="absolute bottom-2 left-2 flex space-x-2"></div>
+                </div>
+
+                <div class="p-4">
+                    <span id="detailCategory" class="text-xs font-semibold bg-blue-50 text-blue-600 px-2 py-1 rounded-full"></span>
+                    <h2 id="detailName" class="text-xl font-bold text-gray-800 mt-2"></h2>
+                    
+                    <div id="detailPriceContainer" class="my-2"></div>
+                    
+                    <hr class="my-3 border-gray-100">
+                    <h4 class="font-bold text-gray-700 mb-1">বিস্তারিত বিবরণ:</h4>
+                    <p id="detailDescription" class="text-gray-600 text-sm leading-relaxed whitespace-pre-line"></p>
+                    
+                    <hr class="my-4 border-gray-100">
+                    
+                    <button id="btnRequestInterest" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition duration-200 flex items-center justify-center space-x-2 shadow-md shadow-blue-200">
+                        <i class="fa-solid fa-comments"></i>
+                        <span id="btnRequestText">আমি আগ্রহী</span>
+                    </button>
+                    <p class="text-[11px] text-gray-400 text-center mt-2">🔒 আপনার মোবাইল নম্বর বা ইমেইল গোপন থাকবে। অ্যাডমিন যোগাযোগ করিয়ে দেবেন।</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="postAdView" class="view-section">
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                <h2 id="adFormTitle" class="text-xl font-bold text-gray-800 mb-4">নতুন বিজ্ঞাপন দিন</h2>
+                <form id="adForm" onsubmit="handleAdSubmit(event)">
+                    <input type="hidden" id="editProductId" value="">
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">পণ্যের নাম *</label>
+                        <input type="text" id="adName" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="যেমন: iPhone 12 Pro">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">ক্যাটাগরি *</label>
+                        <select id="adCategory" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="" disabled selected>ক্যাটাগরি নির্বাচন করুন</option>
+                        </select>
+                    </div>
+
+                    <!-- DYNAMIC FIELDS START -->
+                    <div id="sellFields" class="grid grid-cols-2 gap-3 mb-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">মূল্য (৳) *</label>
+                            <input type="number" id="adPrice" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="৳ ১৫০০">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">ডিসকাউন্ট মূল্য</label>
+                            <input type="number" id="adDiscountPrice" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="৳ ১২০০">
+                        </div>
+                    </div>
+                    <div id="buyFields" class="mb-4 hidden">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">কত টাকা হলে আপনি কিনবেন? (৳) *</label>
+                        <input type="number" id="adMaxBudget" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="সর্বোচ্চ বাজেট">
+                    </div>
+                    <div id="exchangeFields" class="mb-4 hidden">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">সাইজ বিনিময় (Size Swap) *</label>
+                        <input type="text" id="adSizeSwap" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="যেমন: আমার M সাইজ, চাই L সাইজ">
+                    </div>
+                    <!-- DYNAMIC FIELDS END -->
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">বিস্তারিত বিবরণ *</label>
+                        <textarea id="adDescription" required rows="4" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="ব্যবহারের সময়কাল, পণ্যের কন্ডিশন ইত্যাদি লিখুন..."></textarea>
+                    </div>
+
+                    <div class="mb-5">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">পণ্যের ছবি আপলোড করুন (সর্বোচ্চ ৩টি)</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="relative border-2 border-dashed border-gray-200 rounded-lg h-24 flex flex-col items-center justify-center cursor-pointer overflow-hidden bg-gray-50">
+                                <input type="file" id="imgInput1" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="previewImage(this, 'imgPre1')">
+                                <img id="imgPre1" class="w-full h-full object-cover hidden">
+                                <div id="imgPlaceholder1" class="text-center text-gray-400 text-xs"><i class="fa-solid fa-camera text-lg block mb-1"></i>প্রধান ছবি</div>
+                            </div>
+                            <div class="relative border-2 border-dashed border-gray-200 rounded-lg h-24 flex flex-col items-center justify-center cursor-pointer overflow-hidden bg-gray-50">
+                                <input type="file" id="imgInput2" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="previewImage(this, 'imgPre2')">
+                                <img id="imgPre2" class="w-full h-full object-cover hidden">
+                                <div id="imgPlaceholder2" class="text-center text-gray-400 text-xs"><i class="fa-solid fa-plus text-lg block mb-1"></i>ছবি ২</div>
+                            </div>
+                            <div class="relative border-2 border-dashed border-gray-200 rounded-lg h-24 flex flex-col items-center justify-center cursor-pointer overflow-hidden bg-gray-50">
+                                <input type="file" id="imgInput3" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="previewImage(this, 'imgPre3')">
+                                <img id="imgPre3" class="w-full h-full object-cover hidden">
+                                <div id="imgPlaceholder3" class="text-center text-gray-400 text-xs"><i class="fa-solid fa-plus text-lg block mb-1"></i>ছবি ৩</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="btnSubmitAd" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition duration-200 shadow-md">
+                        <i class="fa-solid fa-cloud-arrow-up mr-1"></i> সাবমিট করুন
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <section id="accountView" class="view-section">
+            <div id="authSection" class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                <div class="flex border-b mb-4">
+                    <button onclick="toggleAuthTab('login')" id="tabLogin" class="w-1/2 pb-2 text-center font-bold text-blue-600 border-b-2 border-blue-600">লগইন</button>
+                    <button onclick="toggleAuthTab('register')" id="tabRegister" class="w-1/2 pb-2 text-center font-bold text-gray-400">রেজিস্ট্রেশন</button>
+                </div>
+                <form id="loginForm" onsubmit="handleLogin(event)">
+                    <div class="mb-4"><label class="block text-sm font-semibold text-gray-700 mb-1">ইমেইল বা মোবাইল নম্বর</label><input type="text" id="loginIdentifier" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></div>
+                    <div class="mb-4"><label class="block text-sm font-semibold text-gray-700 mb-1">পাসওয়ার্ড</label><input type="password" id="loginPassword" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></div>
+                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-lg">লগইন করুন</button>
+                </form>
+                <form id="registerForm" onsubmit="handleRegisterSubmit(event)" class="hidden">
+                    <div class="mb-3"><label class="block text-sm font-semibold text-gray-700 mb-1">পূর্ণ নাম *</label><input type="text" id="regName" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></div>
+                    <div class="mb-3"><label class="block text-sm font-semibold text-gray-700 mb-1">ইমেইল অ্যাড্রেস *</label><input type="email" id="regEmail" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="কর্মী ইমেইল"></div>
+                    <div class="mb-3"><label class="block text-sm font-semibold text-gray-700 mb-1">মোবাইল নম্বর *</label><input type="tel" id="regMobile" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="01XXXXXXXXX"></div>
+                    <div class="mb-4"><label class="block text-sm font-semibold text-gray-700 mb-1">পাসওয়ার্ড *</label><input type="password" id="regPassword" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></div>
+                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-lg">OTP পাঠান</button>
+                </form>
+            </div>
+            <div id="dashboardSection" class="hidden space-y-4">
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col justify-center items-center">
+                    <h3 id="dashName" class="font-bold text-gray-800 text-lg"></h3>
+                    <p id="dashEmail" class="text-xs text-gray-500 mb-1"></p>
+                    <!-- Mobile Number -->
+                    <p id="dashMobile" class="text-xs text-gray-500"></p>
+                    <button onclick="confirmLogout()" class="mt-3 text-red-500 font-semibold text-xs border border-red-100 px-4 py-1.5 rounded-xl hover:bg-red-50 w-full"><i class="fa-solid fa-right-from-bracket mr-1"></i>লগআউট</button>
+                </div>
+                
+                <!-- MY ADS DRAWER SECTION -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div onclick="toggleMyAds()" class="p-4 cursor-pointer select-none hover:bg-gray-50 transition duration-200 flex justify-between items-center">
+                        <h4 class="font-bold text-gray-800"><i class="fa-solid fa-rectangle-list text-blue-600 mr-1"></i> আমার বিজ্ঞাপনসমূহ (My Ads)</h4>
+                        <i id="myAdsArrow" class="fa-solid fa-chevron-down text-gray-500 transition-transform duration-300"></i>
+                    </div>
+                    <div id="myAdsListContainer" class="hidden border-t border-gray-100 bg-gray-50/50">
+                        <div id="myAdsList" class="space-y-3"></div>
+                    </div>
+                </div>
+
+                <!-- NEW: MY REQUESTS DRAWER SECTION -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div onclick="toggleMyRequests()" class="p-4 cursor-pointer select-none hover:bg-gray-50 transition duration-200 flex justify-between items-center">
+                        <h4 class="font-bold text-gray-800"><i class="fa-solid fa-hand-holding-heart text-indigo-600 mr-1"></i> আমার রিকোয়েস্টসমূহ (My Requests)</h4>
+                        <i id="myRequestsArrow" class="fa-solid fa-chevron-down text-gray-500 transition-transform duration-300"></i>
+                    </div>
+                    <div id="myRequestsListContainer" class="hidden border-t border-gray-100 bg-gray-50/50">
+                        <div id="myRequestsList" class="space-y-3"></div>
+                    </div>
+                </div>
+                <!-- END NEW SECTION -->
+                
+            </div>
+        </section>
+
+    </main>
+
+    <div class="bg-white border-t border-gray-200 py-3 text-center mt-6">
+        <button onclick="openPoliciesModal()" class="text-xs text-gray-500 hover:text-blue-600 underline">নীতিমালা ও শর্তাবলী</button>
+        <p class="text-[10px] text-gray-400 mt-1">© 2023 Community Classifieds</p>
+    </div>
+
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-lg px-6 py-2 flex justify-around items-center z-40 max-w-md mx-auto">
+        <button onclick="showView('homeView')" id="nav-homeView" class="flex flex-col items-center space-y-1 text-gray-400 nav-active"><i class="fa-solid fa-house text-lg"></i><span class="text-[10px]">হোম</span></button>
+        <button onclick="checkAuthAndNavigate('postAdView')" id="nav-postAdView" class="flex flex-col items-center space-y-1 text-gray-400"><i class="fa-solid fa-circle-plus text-lg"></i><span class="text-[10px]">বিজ্ঞাপন দিন</span></button>
+        <button onclick="showView('accountView')" id="nav-accountView" class="flex flex-col items-center space-y-1 text-gray-400"><i class="fa-solid fa-user text-lg"></i><span class="text-[10px]">অ্যাকাউন্ট</span></button>
+    </nav>
+
+    <!-- Ad Type Selection Modal -->
+    <div id="adTypeModal" class="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 hidden transition-opacity">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl relative animate-bounce-in">
+            <button onclick="closeAdTypeModal()" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            <div class="text-center mb-6"><h3 class="text-2xl font-bold text-gray-800">আপনি কী করতে চান?</h3><p class="text-sm text-gray-500 mt-1">বিজ্ঞাপনের উদ্দেশ্য নির্বাচন করুন</p></div>
+            <div class="grid grid-cols-1 gap-4">
+                <button onclick="selectAdType('sell')" class="flex items-center p-4 border-2 border-gray-100 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition duration-300 group">
+                    <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition duration-300"><i class="fa-solid fa-tag text-xl"></i></div>
+                    <div class="ml-4 text-left"><h4 class="font-bold text-gray-800">বিক্রি করতে চাই</h4><p class="text-xs text-gray-500">আমার পণ্য বিক্রি করব</p></div>
+                </button>
+                <button onclick="selectAdType('buy')" class="flex items-center p-4 border-2 border-gray-100 rounded-xl hover:border-green-500 hover:bg-green-50 transition duration-300 group">
+                    <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 group-hover:bg-green-600 group-hover:text-white transition duration-300"><i class="fa-solid fa-cart-shopping text-xl"></i></div>
+                    <div class="ml-4 text-left"><h4 class="font-bold text-gray-800">কিনতে চাই</h4><p class="text-xs text-gray-500">আমি কিছু কিনতে চাই</p></div>
+                </button>
+                <button onclick="selectAdType('exchange')" class="flex items-center p-4 border-2 border-gray-100 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition duration-300 group">
+                    <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition duration-300"><i class="fa-solid fa-right-left text-xl"></i></div>
+                    <div class="ml-4 text-left"><h4 class="font-bold text-gray-800">এক্সচেঞ্জ করতে চাই</h4><p class="text-xs text-gray-500">পণ্য বিনিময় করতে চাই</p></div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- OTP Modal -->
+    <div id="otpModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl p-5 w-full max-w-xs shadow-xl text-center">
+            <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3 text-xl"><i class="fa-solid fa-shield-keyhole"></i></div>
+            <h3 class="font-bold text-gray-800 text-lg mb-1">ইমেইল ভেরিফিকেশন</h3>
+            <p class="text-xs text-gray-500 mb-4">আপনার ইমেইলে একটি ৬-ডিজিটের OTP পাঠানো হয়েছে।</p>
+            <input type="number" id="otpInput" class="w-full text-center tracking-widest text-xl font-bold border rounded-xl py-2 mb-4 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="000000">
+            <div class="flex space-x-2"><button onclick="closeOtpModal()" class="w-1/2 border py-2 rounded-lg font-medium text-gray-600 text-sm">বাতিল</button><button onclick="handleOtpVerify()" class="w-1/2 bg-blue-600 text-white py-2 rounded-lg font-bold text-sm">ভেরিফাই করুন</button></div>
+        </div>
+    </div>
+
+    <!-- Policies Modal -->
+    <div id="policiesModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl p-5 w-full max-w-sm shadow-xl relative">
+            <button onclick="closePoliciesModal()" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            <h3 class="font-bold text-gray-800 text-lg mb-3 border-b pb-2">নীতিমালা ও শর্তাবলী</h3>
+            <div id="policiesContent" class="text-sm text-gray-600 space-y-4 max-h-80 overflow-y-auto pr-2"></div>
+            <button onclick="closePoliciesModal()" class="w-full mt-4 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm font-semibold">বন্ধ করুন</button>
+        </div>
+    </div>
+
+    <!-- Global Popup Modal -->
+    <div id="popupModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden transition-opacity">
+        <div class="bg-white rounded-2xl p-0 w-full max-w-xs shadow-2xl relative overflow-hidden">
+            <button onclick="closePopupModal()" class="absolute top-2 right-2 z-10 w-8 h-8 bg-black/20 rounded-full flex items-center justify-center text-white hover:bg-black/40 backdrop-blur-sm"><i class="fa-solid fa-xmark"></i></button>
+            <div id="popupImageContainer" class="h-40 bg-gray-200"><img id="popupImg" src="" class="w-full h-full object-cover hidden"></div>
+            <div class="p-5 text-center"><h4 id="popupTitle" class="font-bold text-gray-800 text-lg mb-2">নোটিশ</h4><p id="popupMessage" class="text-sm text-gray-600 leading-relaxed"></p><button onclick="closePopupModal()" class="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg font-bold text-sm">ঠিক আছে</button></div>
+        </div>
+    </div>
+
+    <div id="globalLoader" class="fixed inset-0 bg-white/80 z-50 flex flex-col items-center justify-center hidden"><div class="animate-spin rounded-full h-10 w-10 border-4 border-blue-600 border-t-transparent"></div><p class="text-xs text-gray-600 font-medium mt-2">দয়া করে অপেক্ষা করুন...</p></div>
+
+    <script>
+    function compressImage(file, maxWidth, maxHeight, callback) {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                let width = img.width; let height = img.height;
+                if (width > height) { if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; } } else { if (height > maxHeight) { width *= maxHeight / height; height = maxHeight; } }
+                const canvas = document.createElement('canvas');
+                canvas.width = width; canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                callback(canvas.toDataURL('image/jpeg', 0.7));
+            }
+        }
+    }
+
+    // ============================================================
+    // VERCEL/NETLIFY HOSTING HELPER (POLYFILL FOR GOOGLE.SCRIPT.RUN)
+    // ============================================================
+    // নিচে আপনার Google Apps Script-এর বর্তমান Web App URL-টি বসিয়ে দিন:
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwmkzgsz-GBljsujIrv1-JrJ3lZ_M-ijiUSvHDvtfsW2bMoFTJCGsXbIV2qIHMfTNcA/exec"; 
+
+    if (typeof google === 'undefined' || !google.script) {
+        window.google = {
+            script: {
+                run: (() => {
+                    let successHandler = (res) => console.log("Success:", res);
+                    let failureHandler = (err) => console.error("Failure:", err);
+
+                    const handlerChain = {
+                        withSuccessHandler: function(callback) {
+                            successHandler = callback;
+                            return this;
+                        },
+                        withFailureHandler: function(callback) {
+                            failureHandler = callback;
+                            return this;
+                        }
+                    };
+
+                    return new Proxy(handlerChain, {
+                        get: function(target, prop) {
+                            if (prop in target) {
+                                return target[prop];
+                            }
+
+                            return function(...args) {
+                                // Vercel থেকে Apps Script-এ ডাটা পাঠানোর জন্য Fetch API
+                                fetch(GAS_WEB_APP_URL, {
+                                    method: 'POST',
+                                    mode: 'cors',
+                                    headers: {
+                                        'Content-Type': 'text/plain;charset=utf-8'
+                                    },
+                                    body: JSON.stringify({
+                                        functionName: prop,
+                                        arguments: args
+                                    })
+                                })
+                                .then(response => response.json())
+                                .then(res => {
+                                    if (res && res.success === false && res.error) {
+                                        failureHandler(res.error);
+                                    } else {
+                                        successHandler(res);
+                                    }
+                                })
+                                .catch(err => {
+                                    failureHandler(err.message || err);
+                                });
+                            };
+                        }
+                    });
+                })()
+            }
+        };
+    }
+    
+    // আপনার বাকি সব জাভাস্ক্রিপ্ট কোড (যেমন: loadProducts, checkLogin ইত্যাদি) এর নিচ থেকে শুরু হবে...
+
+        let appData = { settings: {}, categories: [], products: [], banners: [], popups: [], policies: {} };
+        let currentUser = JSON.parse(localStorage.getItem('user')) || null;
+        let sessionToken = localStorage.getItem('sessionToken') || null;
+        let tempRegData = null; 
+        let currentSelectedAd = null;
+        let selectedAdType = 'sell'; 
+
+        // Filter State Variables
+        let activeCategory = 'all';
+        let activeType = 'all'; 
+
+        // CACHING VARIABLES
+        let cachedUserAds = [];
+        let cachedUserRequests = []; // NEW VARIABLE FOR REQUESTS
+
+        let currentSlide = 0; let slideInterval; let touchStartX = 0; let touchEndX = 0;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadInitialData();
+            updateAuthUI();
+            
+            // Search Input Logic
+            const searchInput = document.getElementById('searchInput');
+            searchInput.addEventListener('input', (e) => {
+                const clearBtn = document.getElementById('searchClearBtn');
+                if(e.target.value.length > 0) clearBtn.classList.remove('hidden');
+                else clearBtn.classList.add('hidden');
+            });
+            searchInput.addEventListener('keydown', (e) => {
+                if(e.key === 'Enter') performSearch();
+            });
+            
+            window.addEventListener('popstate', (event) => {
+                const hash = window.location.hash.replace('#', '');
+                if (hash) switchView(hash, false); else switchView('homeView', false);
+            });
+        });
+
+        function showLoader(show) { document.getElementById('globalLoader').style.display = show ? 'flex' : 'none'; }
+
+        function showView(viewId) {
+            const activeElement = document.querySelector('.view-section.active');
+            if (activeElement && activeElement.id === viewId) return;
+            if (window.location.hash !== '#' + viewId) history.pushState(null, null, '#' + viewId);
+            switchView(viewId, true);
+        }
+
+        function switchView(viewId, updateHash) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            const target = document.getElementById(viewId);
+            if(target) target.classList.add('active');
+            document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('nav-active'));
+            const activeNav = document.getElementById('nav-' + viewId);
+            if (activeNav) activeNav.classList.add('nav-active');
+            window.scrollTo(0, 0);
+            if (viewId === 'accountView' && currentUser) {
+                // Reset drawers to closed state when entering account view
+                document.getElementById('myAdsListContainer').classList.add('hidden');
+                document.getElementById('myAdsArrow').classList.remove('fa-chevron-up');
+                document.getElementById('myAdsArrow').classList.add('fa-chevron-down');
+
+                document.getElementById('myRequestsListContainer').classList.add('hidden');
+                document.getElementById('myRequestsArrow').classList.remove('fa-chevron-up');
+                document.getElementById('myRequestsArrow').classList.add('fa-chevron-down');
+            }
+        }
+
+        function checkAuthAndNavigate(viewId) {
+            if (!currentUser) {
+                Swal.fire({ icon: 'warning', title: 'লগইন প্রয়োজন', text: 'এই পেজে যেতে প্রথমে লগইন বা রেজিস্ট্রেশন সম্পন্ন করুন।', confirmButtonColor: '#2563eb' });
+                showView('accountView');
+            } else {
+                if(viewId === 'postAdView') {
+                    document.getElementById('adForm').reset();
+                    document.getElementById('editProductId').value = '';
+                    ['imgPre1','imgPre2','imgPre3'].forEach(id => document.getElementById(id).classList.add('hidden'));
+                    ['imgPlaceholder1','imgPlaceholder2','imgPlaceholder3'].forEach(id => document.getElementById(id).style.display = 'block');
+                    document.getElementById('adTypeModal').classList.remove('hidden');
+                } else { showView(viewId); }
+            }
+        }
+
+        function selectAdType(type) {
+            selectedAdType = type;
+            closeAdTypeModal();
+            document.getElementById('sellFields').classList.add('hidden');
+            document.getElementById('buyFields').classList.add('hidden');
+            document.getElementById('exchangeFields').classList.add('hidden');
+            document.getElementById('adPrice').removeAttribute('required');
+            document.getElementById('adMaxBudget').removeAttribute('required');
+            document.getElementById('adSizeSwap').removeAttribute('required');
+            let titleText = 'নতুন বিজ্ঞাপন দিন';
+            if(type === 'sell') {
+                titleText = '🛍️ বিক্রির জন্য বিজ্ঞাপন দিন';
+                document.getElementById('sellFields').classList.remove('hidden');
+                document.getElementById('adPrice').setAttribute('required', 'true');
+            } else if(type === 'buy') {
+                titleText = '🛒 কেনার অনুরোধ বিজ্ঞাপন দিন';
+                document.getElementById('buyFields').classList.remove('hidden');
+                document.getElementById('adMaxBudget').setAttribute('required', 'true');
+            } else if(type === 'exchange') {
+                titleText = '🔄 এক্সচেঞ্জের জন্য বিজ্ঞাপন দিন';
+                document.getElementById('exchangeFields').classList.remove('hidden');
+                document.getElementById('adSizeSwap').setAttribute('required', 'true');
+            }
+            document.getElementById('adFormTitle').innerText = titleText;
+            showView('postAdView');
+        }
+
+        function closeAdTypeModal() { document.getElementById('adTypeModal').classList.add('hidden'); }
+
+        function loadInitialData() {
+            google.script.run.withSuccessHandler(res => {
+                document.getElementById('skeletonLoader').classList.remove('active');
+                document.getElementById('homeView').classList.add('active');
+                document.getElementById('headerSkeleton').classList.add('hidden');
+                document.getElementById('realHeaderContent').classList.remove('hidden');
+                
+                if (res.success) {
+                    appData = res.data;
+                    document.getElementById('siteName').innerText = appData.settings.sitename || 'Classifieds';
+                    if (appData.settings.logourl) document.getElementById('siteLogo').src = appData.settings.logourl;
+                    initBannerSlider();
+                    if(appData.popups && appData.popups.length > 0) showPopup(appData.popups[0]);
+                    renderCategories();
+                    renderAdTypeFilters(); 
+                    populateCategoryDropdown();
+                    applyFilters(); 
+                } else { 
+                    document.getElementById('skeletonLoader').classList.remove('active');
+                    document.getElementById('homeView').classList.add('active');
+                    document.getElementById('headerSkeleton').classList.add('hidden');
+                    document.getElementById('realHeaderContent').classList.remove('hidden');
+                    Swal.fire({ icon: 'error', title: 'ত্রুটি', text: 'ডাটা লোড করতে ব্যর্থ: ' + res.error }); 
+                }
+            }).withFailureHandler(err => { 
+                document.getElementById('skeletonLoader').classList.remove('active');
+                document.getElementById('homeView').classList.add('active');
+                document.getElementById('headerSkeleton').classList.add('hidden');
+                document.getElementById('realHeaderContent').classList.remove('hidden');
+                Swal.fire({ icon: 'error', title: 'সার্ভার এরর', text: err }); 
+            }).getInitialData();
+        }
+
+        function performSearch() {
+            const searchInput = document.getElementById('searchInput');
+            const query = searchInput.value.toLowerCase().trim();
+            if(query.length === 0) { clearSearch(); return; }
+            searchInput.blur();
+
+            const filtered = appData.products.filter(p => {
+                const catMatch = activeCategory === 'all' || (p.category && p.category.trim().toLowerCase() === activeCategory);
+                const typeMatch = activeType === 'all' || (p.adType || 'sell') === activeType;
+                if (!catMatch || !typeMatch) return false;
+                const nameMatch = p.name && p.name.toLowerCase().includes(query);
+                const descMatch = p.description && p.description.toLowerCase().includes(query);
+                return nameMatch || descMatch;
+            });
+            renderProducts(filtered);
+            const grid = document.getElementById('productsGrid');
+            grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            grid.classList.add('search-highlight');
+            setTimeout(() => grid.classList.remove('search-highlight'), 1500);
+        }
+
+        function clearSearch() {
+            const searchInput = document.getElementById('searchInput');
+            searchInput.value = '';
+            document.getElementById('searchClearBtn').classList.add('hidden');
+            applyFilters(); 
+        }
+
+        function renderAdTypeFilters() {
+            const container = document.getElementById('adTypeFilters');
+            const types = [
+                { id: 'all', label: 'সব', baseColor: 'gray' },
+                { id: 'sell', label: 'বিক্রি', baseColor: 'blue' },
+                { id: 'buy', label: 'কেনা অনুরোধ', baseColor: 'green' },
+                { id: 'exchange', label: 'এক্সচেঞ্জ', baseColor: 'purple' }
+            ];
+            container.innerHTML = '';
+            types.forEach(t => {
+                const btn = document.createElement('button');
+                btn.className = `type-btn text-xs font-semibold px-4 py-2 rounded-full whitespace-nowrap transition transform hover:scale-105`;
+                btn.setAttribute('data-type', t.id);
+                btn.innerText = t.label;
+                btn.onclick = () => filterByAdType(t.id);
+                container.appendChild(btn);
+            });
+            updateTypeHighlight(); 
+        }
+
+        function filterByAdType(type) {
+            activeType = type;
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchClearBtn').classList.add('hidden');
+            applyFilters();
+            updateTypeHighlight();
+        }
+
+        function applyFilters() {
+            const filtered = appData.products.filter(p => {
+                const catMatch = activeCategory === 'all' || (p.category && p.category.trim().toLowerCase() === activeCategory);
+                const typeMatch = activeType === 'all' || (p.adType || 'sell') === activeType;
+                return catMatch && typeMatch;
+            });
+            renderProducts(filtered);
+            updateCategoryHighlight();
+        }
+
+        function filterCategory(catName) {
+            const targetCat = catName.trim().toLowerCase();
+            if (targetCat === 'all') { activeCategory = 'all'; } else { activeCategory = targetCat; }
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchClearBtn').classList.add('hidden');
+            applyFilters();
+            updateCategoryHighlight();
+        }
+
+        function updateCategoryHighlight() {
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                const btnCat = btn.getAttribute('data-cat') ? btn.getAttribute('data-cat').trim().toLowerCase() : '';
+                if (btnCat === activeCategory) btn.className = "cat-btn bg-blue-600 text-white text-xs font-semibold px-4 py-2 rounded-full whitespace-nowrap shadow-md transform scale-105 transition";
+                else btn.className = "cat-btn bg-white border text-gray-700 text-xs px-4 py-2 rounded-full whitespace-nowrap hover:bg-gray-50 transition";
+            });
+        }
+
+        function updateTypeHighlight() {
+            document.querySelectorAll('.type-btn').forEach(btn => {
+                const type = btn.getAttribute('data-type');
+                const isSelected = (type === activeType);
+                let colorKey = 'slate'; 
+                if(type === 'sell') colorKey = 'blue';
+                if(type === 'buy') colorKey = 'green';
+                if(type === 'exchange') colorKey = 'purple';
+                let classes = 'type-btn text-xs font-semibold px-4 py-2 rounded-full whitespace-nowrap transition transform hover:scale-105';
+                if (isSelected) {
+                    if(colorKey === 'slate') classes += ' bg-slate-800 text-white shadow-md scale-105'; 
+                    if(colorKey === 'blue') classes += ' bg-blue-600 text-white shadow-md scale-105';
+                    if(colorKey === 'green') classes += ' bg-green-600 text-white shadow-md scale-105';
+                    if(colorKey === 'purple') classes += ' bg-purple-600 text-white shadow-md scale-105';
+                } else {
+                    if(colorKey === 'slate') classes += ' bg-slate-100 text-slate-700 border border-slate-200'; 
+                    if(colorKey === 'blue') classes += ' bg-blue-50 text-blue-700 border border-blue-100';
+                    if(colorKey === 'green') classes += ' bg-green-50 text-green-700 border border-green-100';
+                    if(colorKey === 'purple') classes += ' bg-purple-50 text-purple-700 border border-purple-100';
+                }
+                btn.className = classes;
+            });
+        }
+
+        // BANNER & OTHER LOGIC
+        function initBannerSlider() {
+            const wrapper = document.getElementById('bannerSlidesWrapper');
+            const dotsContainer = document.getElementById('bannerDots');
+            wrapper.innerHTML = ''; dotsContainer.innerHTML = '';
+            if(!appData.banners || appData.banners.length === 0) { wrapper.parentElement.style.display = 'none'; return; }
+            appData.banners.forEach((banner, index) => {
+                const slide = document.createElement('div');
+                slide.className = 'w-full h-full flex-shrink-0 relative cursor-pointer';
+                slide.onclick = () => {
+                    if(banner.linktocategory) { filterCategory(banner.linktocategory); const catSection = document.getElementById('categoriesContainer'); window.scrollTo({ top: catSection.offsetTop - 100, behavior: 'smooth' }); } 
+                    else if (banner.redirecturl) window.open(banner.redirecturl, '_blank');
+                };
+                slide.innerHTML = `<img src="${banner.image}" class="w-full h-full object-cover" alt="${banner.title}">${banner.title ? `<div class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent"><h3 class="text-white font-bold text-lg drop-shadow-md">${banner.title}</h3></div>` : ''}`;
+                wrapper.appendChild(slide);
+                const dot = document.createElement('span');
+                dot.className = `dot ${index === 0 ? 'dot-active' : ''}`;
+                dot.onclick = (e) => { e.stopPropagation(); goToSlide(index); };
+                dotsContainer.appendChild(dot);
+            });
+            startAutoSlide();
+            const sliderContainer = wrapper.parentElement;
+            sliderContainer.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; stopAutoSlide(); }, {passive: true});
+            sliderContainer.addEventListener('touchend', e => { touchEndX = e.changedTouches[0].screenX; handleSwipe(); startAutoSlide(); }, {passive: true});
+        }
+        function goToSlide(index) { currentSlide = index; updateSlidePosition(); }
+        function nextSlide() { currentSlide = (currentSlide + 1) % appData.banners.length; updateSlidePosition(); }
+        function prevSlide() { currentSlide = (currentSlide - 1 + appData.banners.length) % appData.banners.length; updateSlidePosition(); }
+        function updateSlidePosition() {
+            const wrapper = document.getElementById('bannerSlidesWrapper');
+            wrapper.style.transform = `translateX(-${currentSlide * 100}%)`;
+            document.querySelectorAll('.dot').forEach((dot, index) => { if(index === currentSlide) dot.classList.add('dot-active'); else dot.classList.remove('dot-active'); });
+        }
+        function startAutoSlide() { stopAutoSlide(); slideInterval = setInterval(nextSlide, 4000); }
+        function stopAutoSlide() { clearInterval(slideInterval); }
+        function handleSwipe() { if (touchEndX < touchStartX - 50) nextSlide(); if (touchEndX > touchStartX + 50) prevSlide(); }
+
+        function renderCategories() {
+            const container = document.getElementById('categoriesContainer');
+            container.innerHTML = `<button onclick="filterCategory('all')" data-cat="all" class="cat-btn bg-blue-600 text-white text-xs font-semibold px-4 py-2 rounded-full whitespace-nowrap shadow-md">সব সব</button>`;
+            appData.categories.forEach(cat => { container.innerHTML += `<button onclick="filterCategory('${cat.categoryname}')" data-cat="${cat.categoryname}" class="cat-btn bg-white border text-gray-700 text-xs px-4 py-2 rounded-full whitespace-nowrap hover:bg-gray-50 transition">${cat.categoryname}</button>`; });
+        }
+        function populateCategoryDropdown() {
+            const select = document.getElementById('adCategory');
+            select.innerHTML = '<option value="" disabled selected>ক্যাটাগরি নির্বাচন করুন</option>';
+            appData.categories.forEach(cat => { const option = document.createElement('option'); option.value = cat.categoryname; option.text = cat.categoryname; select.appendChild(option); });
+        }
+
+        function renderProducts(productsList) {
+            const grid = document.getElementById('productsGrid');
+            const noProductsMsg = document.getElementById('noProductsMsg');
+            grid.innerHTML = '';
+            if (!productsList || productsList.length === 0) { noProductsMsg.classList.remove('hidden'); return; }
+            noProductsMsg.classList.add('hidden');
+
+            productsList.forEach(p => {
+                let badgeHtml = ''; let badgeClass = '';
+                const type = p.adType || 'sell';
+                if (type === 'buy') { badgeHtml = 'কেনা অনুরোধ'; badgeClass = 'bg-green-500 text-white'; } 
+                else if (type === 'exchange') { badgeHtml = 'এক্সচেঞ্জ'; badgeClass = 'bg-purple-500 text-white'; } 
+                else { badgeHtml = 'বিক্রি'; badgeClass = 'bg-blue-500 text-white'; }
+
+                let priceHtml = '';
+                if(type !== 'exchange') {
+                    priceHtml = `৳${p.price}`;
+                    if(p.discountprice && p.discountprice > 0) priceHtml = `<span class="text-xs line-through text-gray-400 mr-1">৳${p.price}</span><span class="text-green-600 font-bold">৳${p.discountprice}</span>`;
+                } else { priceHtml = '<span class="text-purple-600 text-xs font-bold">এক্সচেঞ্জ অনলি</span>'; }
+
+                grid.innerHTML += `
+                    <div onclick="viewProductDetails('${p.id}')" class="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition relative">
+                        <div class="aspect-square bg-gray-100 relative">
+                            <img src="${p.imagemain || 'https://via.placeholder.com/150'}" alt="${p.name}" class="w-full h-full object-cover">
+                            <span class="absolute top-2 left-2 text-[10px] font-bold px-2 py-1 rounded-md shadow-sm ${badgeClass}">${badgeHtml}</span>
+                        </div>
+                        <div class="p-3">
+                            <span class="text-[10px] uppercase font-bold text-blue-500">${p.category}</span>
+                            <h4 class="font-bold text-gray-800 text-sm truncate mt-0.5">${p.name}</h4>
+                            <div class="text-sm mt-1">${priceHtml}</div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // UPDATED FUNCTION: View Product Details (Supports Public, Pending Ads, Requests, and Owner Check)
+        function viewProductDetails(productId) {
+            // Search Order: Public Ads -> My Ads -> My Requests
+            let product = appData.products.find(p => p.id === productId);
+            
+            if (!product && cachedUserAds && cachedUserAds.length > 0) {
+                product = cachedUserAds.find(p => p.id === productId);
+            }
+
+            if (!product && cachedUserRequests && cachedUserRequests.length > 0) {
+                const req = cachedUserRequests.find(r => r.productId === productId);
+                if(req) {
+                    // Construct a product-like object from the request data
+                    product = {
+                        id: req.productId,
+                        category: 'N/A', 
+                        name: req.productName,
+                        imagemain: req.productImage,
+                        description: req.productDescription,
+                        price: 0, 
+                        adType: 'request', // Custom type to disable buy button
+                        sellerid: currentUser.userid // Since it's a request by the user
+                    };
+                }
+            }
+
+            if (!product) return; 
+
+            document.getElementById('detailCategory').innerText = product.category;
+            document.getElementById('detailName').innerText = product.name;
+            document.getElementById('detailImgMain').src = product.imagemain || 'https://via.placeholder.com/400';
+
+            const type = product.adType || 'sell';
+            const btnRequestText = document.getElementById('btnRequestText');
+            const priceContainer = document.getElementById('detailPriceContainer');
+            const detailBadge = document.getElementById('detailBadge');
+            const btnRequest = document.getElementById('btnRequestInterest');
+            
+            detailBadge.classList.add('hidden');
+
+            // --- বাটনের ডিফল্ট স্টাইল রিসেট করা ---
+            btnRequest.disabled = false;
+            btnRequest.classList.remove('bg-gray-400', 'cursor-not-allowed', 'opacity-50');
+            btnRequest.classList.add('bg-blue-600', 'hover:bg-blue-700', 'shadow-md');
+            // -----------------------------------
+
+            // If it's a request view (from My Requests), hide the Interest button
+            if (type === 'request') {
+                btnRequest.classList.add('hidden');
+                priceContainer.innerHTML = `<div class="text-xl font-black text-indigo-600">রিকোয়েস্ট করা হয়েছে</div>`;
+                detailBadge.innerText = 'আগ্রহ প্রকাশ';
+                detailBadge.className = 'absolute top-2 right-2 text-[10px] font-bold px-2 py-1 rounded-md shadow-sm bg-indigo-500 text-white';
+                detailBadge.classList.remove('hidden');
+            } else if (type === 'buy') {
+                btnRequest.classList.remove('hidden');
+                btnRequestText.innerText = "আমি এটি বিক্রি করতে চাই";
+                priceContainer.innerHTML = `<div class="text-xl font-black text-green-600">বাজেট: ৳${product.price}</div>`;
+                detailBadge.innerText = 'কেনা অনুরোধ';
+                detailBadge.className = 'absolute top-2 right-2 text-[10px] font-bold px-2 py-1 rounded-md shadow-sm bg-green-500 text-white';
+                detailBadge.classList.remove('hidden');
+            } else if (type === 'exchange') {
+                btnRequest.classList.remove('hidden');
+                btnRequestText.innerText = "আমি আগ্রহী (এক্সচেঞ্জ করতে চাই)";
+                priceContainer.innerHTML = `<div class="text-xl font-black text-purple-600">এক্সচেঞ্জ অনলি</div>`;
+                detailBadge.innerText = 'এক্সচেঞ্জ';
+                detailBadge.className = 'absolute top-2 right-2 text-[10px] font-bold px-2 py-1 rounded-md shadow-sm bg-purple-500 text-white';
+                detailBadge.classList.remove('hidden');
+            } else {
+                btnRequest.classList.remove('hidden');
+                btnRequestText.innerText = "আমি আগ্রহী (কিনতে চাই)";
+                if(product.discountprice && product.discountprice > 0) priceContainer.innerHTML = `<div class="flex items-center space-x-2"><span class="text-2xl font-black text-green-600">৳${product.discountprice}</span><span class="text-lg text-gray-400 line-through">৳${product.price}</span></div>`;
+                else priceContainer.innerHTML = `<div class="text-2xl font-black text-blue-600">৳${product.price}</div>`;
+            }
+
+            document.getElementById('detailDescription').innerText = product.description;
+
+            const thumbsContainer = document.getElementById('detailThumbnails');
+            thumbsContainer.innerHTML = '';
+            const images = [product.imagemain, product.image2, product.image3].filter(Boolean);
+            if(images.length > 1) { images.forEach(imgUrl => { thumbsContainer.innerHTML += `<img src="${imgUrl}" onclick="document.getElementById('detailImgMain').src='${imgUrl}'" class="w-10 h-10 object-cover border border-white rounded shadow-md cursor-pointer">`; }); }
+
+            // --- মালিকানা (Owner) চেক করা ---
+            // যদি বর্তমান ইউজার এই প্রোডাক্টের বিক্রেতা হন
+            if (currentUser && product.sellerid && currentUser.userid === product.sellerid) {
+                btnRequest.disabled = true; // বাটন ডিজেবল করা
+                btnRequest.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'shadow-md');
+                btnRequest.classList.add('bg-gray-400', 'cursor-not-allowed', 'opacity-50');
+                btnRequestText.innerText = "নিজের বিজ্ঞাপন";
+            } else {
+                // অন্য ইউজার হলে ক্লিক ইভেন্ট যোগ করা
+                btnRequest.onclick = () => handleInterestRequest(product.id);
+            }
+            // -----------------------------------
+
+            showView('productDetailView');
+        }
+
+        function handleInterestRequest(productId) {
+            if (!currentUser) { Swal.fire({ icon: 'warning', title: 'লগইন প্রয়োজন', text: 'আগ্রহ প্রকাশ করতে দয়া করে প্রথমে লগইন করুন।', confirmButtonColor: '#2563eb' }); showView('accountView'); return; }
+            
+            // Frontend Limit Check (Optional, just for UI feedback before server check)
+            // However, requirement says Backend checks it. We will rely on backend error.
+            
+            Swal.fire({ title: 'আপনি কি নিশ্চিত?', text: "আপনি কি নিশ্চিত যে আপনি এই পণ্যটি কিনতে বা এক্সচেঞ্জ করতে আগ্রহী?", icon: 'question', showCancelButton: true, confirmButtonColor: '#2563eb', cancelButtonColor: '#d33', confirmButtonText: 'হ্যাঁ, পাঠাব', cancelButtonText: 'না' }).then((result) => {
+                if (result.isConfirmed) {
+                    showLoader(true);
+                    google.script.run.withSuccessHandler(res => { 
+                        showLoader(false); 
+                        if (res.success) {
+                            // Clear Request Cache
+                            cachedUserRequests = [];
+                            Swal.fire({ icon: 'success', title: 'সফল!', text: res.message, timer: 2000, showConfirmButton: false }); 
+                        } else { 
+                            Swal.fire({ icon: 'error', title: 'ব্যর্থ', text: res.message || res.error || 'সমস্যা হয়েছে' }); 
+                        }
+                    }).withFailureHandler(err => { showLoader(false); Swal.fire({ icon: 'error', title: 'এরর', text: err }); }).submitInterestRequest(productId, currentUser, sessionToken);
+                }
+            });
+        }
+
+        function showPopup(popupData) { document.getElementById('popupMessage').innerText = popupData.message; const imgEl = document.getElementById('popupImg'); const imgContainer = document.getElementById('popupImageContainer'); if(popupData.image) { imgEl.src = popupData.image; imgEl.classList.remove('hidden'); imgContainer.classList.remove('hidden'); } else { imgContainer.classList.add('hidden'); } document.getElementById('popupModal').classList.remove('hidden'); }
+        function closePopupModal() { document.getElementById('popupModal').classList.add('hidden'); }
+        function openPoliciesModal() {
+            const container = document.getElementById('policiesContent'); container.innerHTML = '';
+            const policies = appData.policies;
+            if(Object.keys(policies).length === 0) container.innerHTML = '<p class="text-center text-gray-400">কোনো নীতিমালা পাওয়া যায়নি।</p>';
+            else { for(const [key, value] of Object.entries(policies)) container.innerHTML += `<div><h5 class="font-bold text-gray-700 mb-1">${key}</h5><p class="text-gray-600">${value}</p></div><hr class="my-3 border-gray-100">`; }
+            document.getElementById('policiesModal').classList.remove('hidden');
+        }
+        function closePoliciesModal() { document.getElementById('policiesModal').classList.add('hidden'); }
+        function previewImage(input, previewId) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) { const imgEl = document.getElementById(previewId); imgEl.src = e.target.result; imgEl.classList.remove('hidden'); input.nextElementSibling.nextElementSibling.style.display = 'none'; }
+                reader.readAsDataURL(file);
+            }
+        }
+
+// হেল্পার ফাংশন: টেক্সট থেকে প্লেসহোল্ডার ইমেজ তৈরি করা
+function generatePlaceholderImage(text) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const width = 600;
+    const height = 600;
+    
+    canvas.width = width;
+    canvas.height = height;
+
+    // ১. ব্যাকগ্রাউন্ড কালার (Gray-200)
+    ctx.fillStyle = '#e5e7eb';
+    ctx.fillRect(0, 0, width, height);
+
+    // ২. বর্ডার (Gray-300)
+    ctx.strokeStyle = '#d1d5db';
+    ctx.lineWidth = 10;
+    ctx.strokeRect(0, 0, width, height);
+
+    // ৩. আইকন (একটি সাধারণ ক্যামেরা বা বক্স আইকন আঁকা)
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = '100px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('📷', width / 2, height / 2 - 50);
+
+    // ৪. প্রোডাক্টের নাম লেখা
+    ctx.fillStyle = '#374151'; // Gray-700
+    ctx.font = 'bold 40px sans-serif';
+    
+    // টেক্সট ওয়ার্পিং (দীর্ঘ নাম হলে দুই লাইনে ভাগ করা)
+    const words = text.split(' ');
+    let line = '';
+    let y = height / 2 + 50;
+    const lineHeight = 50;
+    
+    // সরল লজিক: প্রথম লাইন
+    ctx.fillText(words[0] || 'Product', width / 2, y);
+    // দ্বিতীয় লাইন (যদি থাকে)
+    if (words.length > 1) {
+        ctx.fillText(words[1], width / 2, y + lineHeight);
+    }
+    // তৃতীয় লাইন (যদি থাকে)
+    if (words.length > 2) {
+        ctx.fillText('...', width / 2, y + lineHeight * 2);
+    }
+
+    // ইমেজ ডাটা রিটার্ন করা
+    return canvas.toDataURL('image/jpeg', 0.8);
+}
+        function handleAdSubmit(event) {
+            event.preventDefault();
+            
+            if (!currentUser) {
+                Swal.fire({ icon: 'warning', title: 'লগইন প্রয়োজন', text: 'বিজ্ঞাপন দিতে প্রথমে লগইন করুন।', confirmButtonColor: '#2563eb' });
+                showView('accountView');
+                return;
+            }
+
+            const currentAdsOfType = cachedUserAds.filter(ad => (ad.adType || 'sell') === selectedAdType).length;
+            if (currentAdsOfType >= 5) {
+                let typeText = selectedAdType === 'sell' ? 'বিক্রয়ি' : (selectedAdType === 'buy' ? 'কেনার' : 'এক্সচেঞ্জ');
+                Swal.fire({ icon: 'error', title: 'লিমিট শেষ!', text: `আপনি সর্বোচ্চ ৫টি ${typeText} বিজ্ঞাপন দিতে পারবেন। দয়া করে পুরাতন বিজ্ঞাপন মুছে ফেলুন।` });
+                return;
+            }
+
+            showLoader(true);
+            const editId = document.getElementById('editProductId').value;
+            let finalPrice = 0; let finalDiscount = 0; let finalDescription = document.getElementById('adDescription').value;
+            if (selectedAdType === 'sell') { finalPrice = document.getElementById('adPrice').value; finalDiscount = document.getElementById('adDiscountPrice').value || 0; } 
+            else if (selectedAdType === 'buy') { finalPrice = document.getElementById('adMaxBudget').value; finalDiscount = 0; } 
+            else if (selectedAdType === 'exchange') { finalPrice = 0; finalDiscount = 0; const sizeInfo = document.getElementById('adSizeSwap').value; finalDescription = `সাইজ বিনিময়: ${sizeInfo}\n\n${finalDescription}`; }
+            
+            const imagesToUpload = [];
+            const files = [ { el: document.getElementById('imgInput1'), name: 'main.jpg' }, { el: document.getElementById('imgInput2'), name: 'img2.jpg' }, { el: document.getElementById('imgInput3'), name: 'img3.jpg' } ];
+            
+            // --- অটো প্লেসহোল্ডার জেনারেট লজিক ---
+            let hasImage = false;
+            files.forEach(f => {
+                if(f.el.files && f.el.files[0]) hasImage = true;
+            });
+
+            // যদি কোনো ইমেজ না থাকে, তবে প্রোডাক্টের নাম দিয়ে ইমেজ তৈরি করা
+            if (!hasImage) {
+                const productName = document.getElementById('adName').value || "Product";
+                const placeholderData = generatePlaceholderImage(productName);
+                imagesToUpload[0] = { data: placeholderData, name: 'placeholder.jpg' };
+                // বাকি দুটি ফাইল খালি রাখা
+                imagesToUpload[1] = null;
+                imagesToUpload[2] = null;
+                
+                // যেহেতু আমরা ম্যানুয়ালি ডাটা সেট করে দিয়েছি, তাই লুপ এড়িয়ে সরাসরি সেন্ড করব
+                const adPayload = { id: editId || null, userId: currentUser.userid, userEmail: currentUser.email, name: document.getElementById('adName').value, category: document.getElementById('adCategory').value, price: finalPrice, discountprice: finalDiscount, description: finalDescription, images: imagesToUpload, adType: selectedAdType };
+                const action = editId ? 'updateAd' : 'submitAd';
+                google.script.run.withSuccessHandler(res => {
+                    showLoader(false);
+                    if (res.success) {
+                        cachedUserAds = []; 
+                        Swal.fire({ icon: 'success', title: 'সফল!', text: res.message, timer: 2000, showConfirmButton: false });
+                        document.getElementById('adForm').reset();
+                        ['imgPre1','imgPre2','imgPre3'].forEach(id => { document.getElementById(id).classList.add('hidden'); document.getElementById(id).src = ''; });
+                        ['imgPlaceholder1','imgPlaceholder2','imgPlaceholder3'].forEach(id => document.getElementById(id).style.display = 'block');
+                        selectedAdType = 'sell'; showView('homeView');
+                    } else { Swal.fire({ icon: 'error', title: 'ব্যর্থ', text: res.error }); }
+                }).withFailureHandler(err => { showLoader(false); Swal.fire({ icon: 'error', title: 'সার্ভার এরর', text: err }); })[action](adPayload, sessionToken);
+                return; // ফাংশন এখানেই শেষ
+            }
+            // -------------------------------------------------
+
+            // যদি ইউজার ইমেজ আপলোড করে থাকে, তবে স্বাভাবিক প্রসেস (আগের মতো)
+            let loadedCount = 0;
+            const checkAndSend = () => {
+                loadedCount++;
+                if(loadedCount === files.length) {
+                    const adPayload = { id: editId || null, userId: currentUser.userid, userEmail: currentUser.email, name: document.getElementById('adName').value, category: document.getElementById('adCategory').value, price: finalPrice, discountprice: finalDiscount, description: finalDescription, images: imagesToUpload, adType: selectedAdType };
+                    const action = editId ? 'updateAd' : 'submitAd';
+                    google.script.run.withSuccessHandler(res => {
+                        showLoader(false);
+                        if (res.success) {
+                            cachedUserAds = []; 
+                            Swal.fire({ icon: 'success', title: 'সফল!', text: res.message, timer: 2000, showConfirmButton: false });
+                            document.getElementById('adForm').reset();
+                            ['imgPre1','imgPre2','imgPre3'].forEach(id => { document.getElementById(id).classList.add('hidden'); document.getElementById(id).src = ''; });
+                            ['imgPlaceholder1','imgPlaceholder2','imgPlaceholder3'].forEach(id => document.getElementById(id).style.display = 'block');
+                            selectedAdType = 'sell'; showView('homeView');
+                        } else { Swal.fire({ icon: 'error', title: 'ব্যর্থ', text: res.error }); }
+                    }).withFailureHandler(err => { showLoader(false); Swal.fire({ icon: 'error', title: 'সার্ভার এরর', text: err }); })[action](adPayload, sessionToken);
+                }
+            };
+            files.forEach((f, idx) => {
+                if(f.el.files && f.el.files[0]) { compressImage(f.el.files[0], 800, 800, (base64String) => { imagesToUpload[idx] = { data: base64String, name: f.name }; checkAndSend(); }); } else {
+                    if(editId) { const existingImg = document.getElementById('imgPre' + (idx+1)).src; imagesToUpload[idx] = existingImg ? { data: existingImg, name: f.name } : null; } else { imagesToUpload[idx] = null; }
+                    checkAndSend();
+                }
+            });
+        }
+
+        function toggleAuthTab(type) {
+            if (type === 'login') {
+                document.getElementById('loginForm').classList.remove('hidden');
+                document.getElementById('registerForm').classList.add('hidden');
+                document.getElementById('tabLogin').className = "w-1/2 pb-2 text-center font-bold text-blue-600 border-b-2 border-blue-600";
+                document.getElementById('tabRegister').className = "w-1/2 pb-2 text-center font-bold text-gray-400";
+            } else {
+                document.getElementById('registerForm').classList.remove('hidden');
+                document.getElementById('loginForm').classList.add('hidden');
+                document.getElementById('tabRegister').className = "w-1/2 pb-2 text-center font-bold text-blue-600 border-b-2 border-blue-600";
+                document.getElementById('tabLogin').className = "w-1/2 pb-2 text-center font-bold text-gray-400";
+            }
+        }
+
+        function handleRegisterSubmit(event) {
+            event.preventDefault();
+
+            // ইনপুট ভ্যালু নেওয়া
+            const mobile = document.getElementById('regMobile').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const password = document.getElementById('regPassword').value;
+
+            // --- ভ্যালিডেশন লজিক শুরু ---
+
+            // মোবাইল নাম্বার চেক: 01 দিয়ে শুরু, পরের সংখ্যা ৩-৯, মোট ১১ ডিজিট
+            const mobileRegex = /^01[3-9]\d{8}$/;
+            if (!mobileRegex.test(mobile)) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ভুল মোবাইল নম্বর!',
+                    text: 'মোবাইল নম্বরটি অবশ্যই 01 দিয়ে শুরু হতে হবে এবং মোট ১১ সংখ্যার হতে হবে (যেমন: 017XXXXXXXX)।',
+                    confirmButtonColor: '#d33'
+                });
+                return;
+            }
+
+            // ইমেইল চেক: @gmail.com দিয়ে শেষ হতে হবে
+            const emailRegex = /.+@gmail\.com$/;
+            if (!emailRegex.test(email)) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ভুল ইমেইল!',
+                    text: 'ইমেইলটি অবশ্যই @gmail.com দিয়ে শেষ হতে হবে।',
+                    confirmButtonColor: '#d33'
+                });
+                return;
+            }
+            
+            // পাসওয়ার্ড চেক (ন্যূনতম ৬ অক্ষর)
+            if(password.length < 6) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'পাসওয়ার্ড ছোট!',
+                    text: 'পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে।',
+                    confirmButtonColor: '#d33'
+                });
+                return;
+            }
+
+            // --- ভ্যালিডেশন শেষ ---
+
+            // ডাটা টেম্পে ভেরিয়েবলে সেভ করা
+            tempRegData = { 
+                fullname: document.getElementById('regName').value, 
+                email: email, 
+                mobilenumber: mobile, 
+                password: password 
+            };
+            
+            showLoader(true);
+            google.script.run.withSuccessHandler(res => { 
+                showLoader(false); 
+                if (res.success) document.getElementById('otpModal').classList.remove('hidden'); 
+                else Swal.fire({ icon: 'error', title: 'ব্যর্থ', text: res.error || 'OTP পাঠানো সম্ভব হয়নি।' }); 
+            }).withFailureHandler(err => { 
+                showLoader(false); 
+                Swal.fire({ icon: 'error', title: 'এরর', text: err }); 
+            }).sendRegistrationOtp(tempRegData.email);
+        }
+
+        function handleOtpVerify() {
+            const otp = document.getElementById('otpInput').value;
+            if(!otp) return Swal.fire({ icon: 'warning', title: 'OTP প্রয়োজন', text: 'অনুগ্রণ করে OTP লিখুন' });
+            showLoader(true);
+            google.script.run.withSuccessHandler(res => { showLoader(false); if (res.success) Swal.fire({ icon: 'success', title: 'সফল!', text: 'রেজিস্ট্রেশন সফল হয়েছে! অনুগ্রণ করে লগইন করুন।', confirmButtonColor: '#2563eb' }).then(() => { closeOtpModal(); toggleAuthTab('login'); }); else Swal.fire({ icon: 'error', title: 'ভুল OTP', text: res.error }); }).withFailureHandler(err => { showLoader(false); Swal.fire({ icon: 'error', title: 'এরর', text: err }); }).verifyAndRegister(tempRegData.email, otp, tempRegData);
+        }
+
+        function closeOtpModal() { document.getElementById('otpModal').classList.add('hidden'); }
+
+        function handleLogin(event) {
+            event.preventDefault();
+            showLoader(true);
+            const id = document.getElementById('loginIdentifier').value;
+            const pass = document.getElementById('loginPassword').value;
+            google.script.run.withSuccessHandler(res => { showLoader(false); if (res.success) { currentUser = res.user; sessionToken = res.sessionToken; localStorage.setItem('user', JSON.stringify(currentUser)); localStorage.setItem('sessionToken', sessionToken); updateAuthUI(); Swal.fire({ icon: 'success', title: 'স্বাগতম', text: `${currentUser.fullname}, আপনি সফলভাবে লগইন হয়েছেন।`, timer: 1500, showConfirmButton: false }); } else { Swal.fire({ icon: 'error', title: 'লগইন ব্যর্থ', text: res.error }); } }).withFailureHandler(err => { showLoader(false); Swal.fire({ icon: 'error', title: 'এরর', text: err }); }).loginUser(id, pass);
+        }
+
+        function confirmLogout() {
+            Swal.fire({
+                title: 'আপনি কি লগআউট করতে চান?',
+                text: "আপনাকে আবার লগইন করতে হবে।",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'হ্যাঁ, লগআউট',
+                cancelButtonText: 'না'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    localStorage.removeItem('user');
+                    localStorage.removeItem('sessionToken');
+                    currentUser = null;
+                    sessionToken = null;
+                    cachedUserAds = [];
+                    cachedUserRequests = []; // Clear Requests Cache
+                    updateAuthUI();
+                    showView('homeView');
+                    Swal.fire({ title: 'লগআউট!', text: 'আপনি সফলভাবে লগআউট হয়েছেন।', icon: 'success', timer: 1500, showConfirmButton: false });
+                }
+            });
+        }
+
+        function updateAuthUI() {
+            if (currentUser) {
+                document.getElementById('authSection').classList.add('hidden');
+                document.getElementById('dashboardSection').classList.remove('hidden');
+                document.getElementById('dashName').innerText = currentUser.fullname;
+                document.getElementById('dashEmail').innerText = currentUser.email;
+                document.getElementById('dashMobile').innerText = currentUser.mobilenumber;
+            } else {
+                document.getElementById('authSection').classList.remove('hidden');
+                document.getElementById('dashboardSection').classList.add('hidden');
+            }
+        }
+
+        // ============================================
+        // MY ADS LOGIC
+        // ============================================
+        function renderUserAdsList(ads) {
+            const listContainer = document.getElementById('myAdsList');
+            listContainer.innerHTML = '';
+            if(!ads || ads.length === 0) { 
+                listContainer.innerHTML = '<p class="text-sm text-gray-400 py-2 text-center">আপনার দেওয়া কোনো বিজ্ঞাপন নেই।</p>'; 
+                return; 
+            }
+            ads.forEach(ad => {
+                let statusColor = ad.status === 'Approved' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700';
+                let statusText = ad.status === 'Approved' ? 'লাইভ' : 'পেন্ডিং রিভিউ';
+                let typeBadge = ''; const type = ad.adType || 'sell';
+                if(type === 'buy') typeBadge = '<span class="text-[10px] bg-green-100 text-green-600 px-1 rounded ml-1">Buy</span>';
+                else if(type === 'exchange') typeBadge = '<span class="text-[10px] bg-purple-100 text-purple-600 px-1 rounded ml-1">Ex</span>';
+                
+                listContainer.innerHTML += `
+                    <div class="flex items-center justify-between p-2 border border-gray-50 bg-gray-50 rounded-xl">
+                        <div class="flex items-center space-x-3 cursor-pointer" onclick="viewProductDetails('${ad.id}')">
+                            <img src="${ad.imagemain || 'https://via.placeholder.com/50'}" class="cursor-pointer w-12 h-12 object-cover rounded-lg hover:opacity-90 transition">
+                            <div>
+                                <h5 class="font-bold text-sm text-gray-800 truncate w-32 sm:w-40 md:w-48">${ad.name} ${typeBadge}</h5>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded-full font-medium ${statusColor}">${statusText}</span>
+                            </div>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="event.stopPropagation(); editAdData('${ad.id}')" class="text-blue-600 border border-blue-100 bg-white px-3 py-1 rounded-lg text-xs font-semibold shadow-xs"><i class="fa-solid fa-pen-to-square mr-1"></i>এডিট</button>
+                            <button onclick="event.stopPropagation(); confirmDeleteAd('${ad.id}', '${ad.name}')" class="text-red-500 border border-red-100 bg-white px-3 py-1 rounded-lg text-xs font-semibold shadow-xs hover:bg-red-50"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function loadUserAds() {
+            if (cachedUserAds && cachedUserAds.length > 0) {
+                renderUserAdsList(cachedUserAds);
+                return;
+            }
+            const listContainer = document.getElementById('myAdsList');
+            listContainer.innerHTML = '<p class="text-xs text-gray-500">বিজ্ঞাপন তালিকা লোড হচ্ছে...</p>';
+            google.script.run.withSuccessHandler(res => {
+                if (res.success) {
+                    cachedUserAds = res.ads; 
+                    renderUserAdsList(cachedUserAds);
+                }
+            }).getUserAds(currentUser.userid, sessionToken, currentUser.email);
+        }
+
+        function toggleMyAds() {
+            const listContainer = document.getElementById('myAdsListContainer');
+            const arrow = document.getElementById('myAdsArrow');
+            
+            if (listContainer.classList.contains('hidden')) {
+                // ড্রয়ারটি বর্তমানে বন্ধ আছে, তাই এটি ওপেন করা হচ্ছে
+                listContainer.classList.remove('hidden');
+                arrow.classList.remove('fa-chevron-down');
+                arrow.classList.add('fa-chevron-up');
+                
+                // লজিক: যদি ক্যাশে ডাটা থাকে তবে সেটি দেখাবে। 
+                // যদি ক্যাশ ফাঁকা থাকে (নতুন অ্যাড সাবমিটের পর এমনটা হয়), তবে সার্ভার থেকে ফ্রেশ ডাটা আনবে।
+                
+                if (cachedUserAds && cachedUserAds.length > 0) {
+                    renderUserAdsList(cachedUserAds);
+                } else {
+                    loadUserAds();
+                }
+            } else {
+                // ড্রয়ারটি বর্তমানে ওপেন আছে, তাই এটি বন্ধ করা হচ্ছে
+                listContainer.classList.add('hidden');
+                arrow.classList.remove('fa-chevron-up');
+                arrow.classList.add('fa-chevron-down');
+            }
+        }
+
+        function confirmDeleteAd(adId, adName) {
+            Swal.fire({
+                title: 'আপনি কি নিশ্চিত?',
+                text: `"${adName}" বিজ্ঞাপনটি মুছে ফেললে আর ফেরত পাওয়া যাবে না।`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'হ্যাঁ, মুছে ফেলুন',
+                cancelButtonText: 'না'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    handleDeleteAd(adId);
+                }
+            });
+        }
+
+        function handleDeleteAd(adId) {
+            showLoader(true);
+            google.script.run.withSuccessHandler(res => {
+                showLoader(false);
+                if(res.success) {
+                    cachedUserAds = []; 
+                    loadUserAds(); 
+                    Swal.fire({ icon: 'success', title: 'মুছে ফেলা হয়েছে!', text: res.message, timer: 2000, showConfirmButton: false });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'ব্যর্থ', text: res.error });
+                }
+            }).withFailureHandler(err => {
+                showLoader(false);
+                Swal.fire({ icon: 'error', title: 'এরর', text: err });
+            }).deleteAd(adId, currentUser.userid, currentUser.email, sessionToken);
+        }
+
+        function editAdData(adId) {
+            showLoader(true);
+            google.script.run.withSuccessHandler(res => {
+                showLoader(false);
+                if (res.success) {
+                    const ad = res.ads.find(a => a.id === adId);
+                    if (!ad) return;
+                    document.getElementById('editProductId').value = ad.id;
+                    document.getElementById('adName').value = ad.name;
+                    document.getElementById('adCategory').value = ad.category;
+                    const type = ad.adType || 'sell';
+                    selectedAdType = type;
+                    document.getElementById('sellFields').classList.add('hidden');
+                    document.getElementById('buyFields').classList.add('hidden');
+                    document.getElementById('exchangeFields').classList.add('hidden');
+                    document.getElementById('adPrice').removeAttribute('required');
+                    document.getElementById('adMaxBudget').removeAttribute('required');
+                    document.getElementById('adSizeSwap').removeAttribute('required');
+
+                    if(type === 'sell') {
+                        document.getElementById('sellFields').classList.remove('hidden');
+                        document.getElementById('adPrice').value = ad.price;
+                        document.getElementById('adDiscountPrice').value = ad.discountprice || '';
+                        document.getElementById('adFormTitle').innerText = 'বিক্রির বিজ্ঞাপন এডিট করুন';
+                        document.getElementById('adPrice').setAttribute('required', 'true');
+                    } else if(type === 'buy') {
+                        document.getElementById('buyFields').classList.remove('hidden');
+                        document.getElementById('adMaxBudget').value = ad.price;
+                        document.getElementById('adFormTitle').innerText = 'কেনার অনুরোধ এডিট করুন';
+                        document.getElementById('adMaxBudget').setAttribute('required', 'true');
+                    } else if(type === 'exchange') {
+                        document.getElementById('exchangeFields').classList.remove('hidden');
+                        let desc = ad.description || ''; let sizeVal = desc.split('সাইজ বিনিময়:')[1] || '';
+                        if(sizeVal.includes('\n')) sizeVal = sizeVal.split('\n')[0];
+                        document.getElementById('adSizeSwap').value = sizeVal.trim();
+                        document.getElementById('adFormTitle').innerText = 'এক্সচেঞ্জ বিজ্ঞাপন এডিট করুন';
+                        document.getElementById('adSizeSwap').setAttribute('required', 'true');
+                    }
+                    let finalDesc = ad.description || '';
+                    if(type === 'exchange' && finalDesc.includes('সাইজ বিনিময়:')) finalDesc = finalDesc.split('\n\n')[1] || '';
+                    document.getElementById('adDescription').value = finalDesc;
+
+                    const files = [ad.imagemain, ad.image2, ad.image3];
+                    files.forEach((imgUrl, idx) => { const pre = document.getElementById('imgPre' + (idx + 1)); const holder = document.getElementById('imgPlaceholder' + (idx + 1)); if (imgUrl) { pre.src = imgUrl; pre.classList.remove('hidden'); holder.style.display = 'none'; } });
+                    showView('postAdView');
+                }
+            }).getUserAds(currentUser.userid, sessionToken, currentUser.email);
+        }
+
+        // ============================================
+        // MY REQUESTS LOGIC (NEW)
+        // ============================================
+        function renderUserRequestsList(requests) {
+            const listContainer = document.getElementById('myRequestsList');
+            listContainer.innerHTML = '';
+            if(!requests || requests.length === 0) { 
+                listContainer.innerHTML = '<p class="text-sm text-gray-400 py-2 text-center">আপনার কোনো রিকোয়েস্ট নেই।</p>'; 
+                return; 
+            }
+            requests.forEach(req => {
+                let statusColor = '';
+                let statusText = '';
+                
+                if(req.status === 'Success') { statusColor = 'bg-green-100 text-green-700'; statusText = 'সফল'; }
+                else if(req.status === 'Failed') { statusColor = 'bg-red-100 text-red-700'; statusText = 'ব্যর্থ'; }
+                else { statusColor = 'bg-amber-100 text-amber-700'; statusText = 'প্রক্রিয়াধীন'; }
+
+                listContainer.innerHTML += `
+                    <div class="flex items-center justify-between p-2 border border-gray-50 bg-gray-50 rounded-xl">
+                        <div class="flex items-center space-x-3 cursor-pointer" onclick="viewProductDetails('${req.productId}')">
+                            <img src="${req.productImage || 'https://via.placeholder.com/50'}" class="cursor-pointer w-12 h-12 object-cover rounded-lg hover:opacity-90 transition">
+                            <div>
+                                <h5 class="font-bold text-sm text-gray-800 truncate w-32 sm:w-40 md:w-48">${req.productName}</h5>
+                                <div class="flex items-center space-x-2 mt-1">
+                                    <span class="text-[10px] px-1.5 py-0.5 rounded-full font-medium ${statusColor}">${statusText}</span>
+                                    <span class="text-[10px] text-gray-400">${req.date}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex space-x-2">
+                             <!-- Delete Button -->
+                            <button onclick="event.stopPropagation(); confirmDeleteRequest('${req.id}', '${req.productName}')" class="text-red-500 border border-red-100 bg-white w-8 h-8 flex items-center justify-center rounded-lg text-xs font-semibold shadow-xs hover:bg-red-50"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function loadUserRequests() {
+            // Check cache
+            if (cachedUserRequests && cachedUserRequests.length > 0) {
+                renderUserRequestsList(cachedUserRequests);
+                return;
+            }
+
+            const listContainer = document.getElementById('myRequestsList');
+            listContainer.innerHTML = '<p class="text-xs text-gray-500">রিকোয়েস্ট তালিকা লোড হচ্ছে...</p>';
+            
+            // Fetch from backend using mobile number as identifier
+            google.script.run.withSuccessHandler(res => {
+                if (res.success) {
+                    cachedUserRequests = res.requests; // Save to cache
+                    renderUserRequestsList(cachedUserRequests);
+                }
+            }).getUserRequests(currentUser.mobilenumber, sessionToken);
+        }
+
+function toggleMyRequests() {
+    const listContainer = document.getElementById('myRequestsListContainer');
+    const arrow = document.getElementById('myRequestsArrow');
+    
+    if (listContainer.classList.contains('hidden')) {
+        // ড্রয়ারটি বর্তমানে বন্ধ আছে, তাই এটি ওপেন করা হচ্ছে
+        listContainer.classList.remove('hidden');
+        arrow.classList.remove('fa-chevron-down');
+        arrow.classList.add('fa-chevron-up');
+        
+        // লজিক: যদি ক্যাশে ডাটা থাকে তবে সেটি দেখাবে। 
+        // যদি ক্যাশ ফাঁকা থাকে (নতুন রিকোয়েস্ট সাবমিটের পর এমনটা হয়), তবে সার্ভার থেকে ফ্রেশ ডাটা আনবে।
+        // HTML এর ভেতরে কী আছে তা চেক করা হবে না, যাতে পুরাতন ডাটা দেখার ভুল না হয়।
+        
+        if (cachedUserRequests && cachedUserRequests.length > 0) {
+            renderUserRequestsList(cachedUserRequests);
+        } else {
+            loadUserRequests();
+        }
+    } else {
+        // ড্রয়ারটি বর্তমানে ওপেন আছে, তাই এটি বন্ধ করা হচ্ছে
+        listContainer.classList.add('hidden');
+        arrow.classList.remove('fa-chevron-up');
+        arrow.classList.add('fa-chevron-down');
+    }
+}
+
+        function confirmDeleteRequest(requestId, productName) {
+            Swal.fire({
+                title: 'আপনি কি নিশ্চিত?',
+                text: `"${productName}" এর জন্য আপনার আগ্রহের রিকোয়েস্টটি মুছে ফেলতে চান?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'হ্যাঁ, মুছে ফেলুন',
+                cancelButtonText: 'না'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    handleDeleteRequest(requestId);
+                }
+            });
+        }
+
+        function handleDeleteRequest(requestId) {
+            showLoader(true);
+            google.script.run.withSuccessHandler(res => {
+                showLoader(false);
+                if(res.success) {
+                    // Clear cache and reload
+                    cachedUserRequests = []; 
+                    loadUserRequests(); 
+                    Swal.fire({ icon: 'success', title: 'মুছে ফেলা হয়েছে!', text: res.message, timer: 2000, showConfirmButton: false });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'ব্যর্থ', text: res.error });
+                }
+            }).withFailureHandler(err => {
+                showLoader(false);
+                Swal.fire({ icon: 'error', title: 'এরর', text: err });
+            }).deleteUserRequest(requestId, currentUser.email, currentUser.fullname, sessionToken);
+        }
+    </script>
+</body>
+</html>
