@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title><?= getSettings().sitename || 'কমিউনিটি মার্কেটপ্লেস' ?></title>
+    <!-- PHP কোড সরিয়ে ডিফল্ট নাম দেওয়া হয়েছে -->
+    <title>PoliceKitDealBB</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -63,7 +64,8 @@
         <!-- REAL HEADER CONTENT (Hidden initially) -->
         <div id="realHeaderContent" class="flex items-center space-x-2 shrink-0 hidden">
             <img id="siteLogo" src="" alt="Logo" class="h-8 object-contain">
-            <span id="siteName" class="text-lg font-bold text-gray-800 hidden sm:block"></span>
+            <!-- PHP কোড সরিয়ে ডিফল্ট টেক্সট দেওয়া হয়েছে, JS এর মাধ্যমে আপডেট হবে -->
+            <span id="siteName" class="text-lg font-bold text-gray-800 hidden sm:block">Policekitdealbb</span>
         </div>
         
         <!-- Search Bar Container -->
@@ -380,7 +382,7 @@
     // VERCEL/NETLIFY HOSTING HELPER (POLYFILL FOR GOOGLE.SCRIPT.RUN)
     // ============================================================
     // নিচে আপনার Google Apps Script-এর বর্তমান Web App URL-টি বসিয়ে দিন:
-    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwdX0gjZw79KuKMHWRYWVq7jbn6Lwx-s0KykulwbIH544kdXY6lhYadn67H5LFOFEpS/exec"; 
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwmkzgsz-GBljsujIrv1-JrJ3lZ_M-ijiUSvHDvtfsW2bMoFTJCGsXbIV2qIHMfTNcA/exec"; 
 
     if (typeof google === 'undefined' || !google.script) {
         window.google = {
@@ -560,7 +562,14 @@
                 
                 if (res.success) {
                     appData = res.data;
-                    document.getElementById('siteName').innerText = appData.settings.sitename || 'Classifieds';
+                    
+                    // --- FIX: ডায়নামিক টাইটেল আপডেট ---
+                    if (appData.settings.sitename) {
+                        document.title = appData.settings.sitename;
+                        document.getElementById('siteName').innerText = appData.settings.sitename;
+                    }
+                    // ----------------------------------
+
                     if (appData.settings.logourl) document.getElementById('siteLogo').src = appData.settings.logourl;
                     
                     // NOTICE BOARD LOGIC: Update content if exists
