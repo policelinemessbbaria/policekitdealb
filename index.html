@@ -19,6 +19,8 @@
 <meta property="og:description" content="আমাদের অভ্যন্তরীণ বিভিন্ন বিষয় সহজীকরণের লক্ষ্যে PoliceKitDealBB কাজ করে। এখানে স্মার্ট ফোনবুক, ই মিল সিস্টেম ইতিমধ্যেই যুক্ত আছে, পরবর্তীতে আরও ফিচার যুক্ত হতে পারে।">
 <meta property="og:image" content="https://res.cloudinary.com/dkowkawiq/image/upload/v1781193717/20260611_215851_tax96v.webp">
 
+<!-- Cropper.js CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
 
     <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#006a4e">
@@ -247,17 +249,17 @@
                         <label class="block text-sm font-semibold text-gray-700 mb-2">পণ্যের ছবি আপলোড করুন (সর্বোচ্চ ৩টি)</label>
                         <div class="grid grid-cols-3 gap-2">
                             <div class="relative border-2 border-dashed border-gray-200 rounded-lg h-24 flex flex-col items-center justify-center cursor-pointer overflow-hidden bg-gray-50">
-                                <input type="file" id="imgInput1" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="previewImage(this, 'imgPre1')">
+                                <input type="file" id="imgInput1" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="previewImage(this, 'imgPre1', 'imgPlaceholder1')">
                                 <img id="imgPre1" class="w-full h-full object-cover hidden">
                                 <div id="imgPlaceholder1" class="text-center text-gray-400 text-xs"><i class="fa-solid fa-camera text-lg block mb-1"></i>প্রধান ছবি</div>
                             </div>
                             <div class="relative border-2 border-dashed border-gray-200 rounded-lg h-24 flex flex-col items-center justify-center cursor-pointer overflow-hidden bg-gray-50">
-                                <input type="file" id="imgInput2" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="previewImage(this, 'imgPre2')">
+                                <input type="file" id="imgInput2" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="previewImage(this, 'imgPre2', 'imgPlaceholder2')">
                                 <img id="imgPre2" class="w-full h-full object-cover hidden">
                                 <div id="imgPlaceholder2" class="text-center text-gray-400 text-xs"><i class="fa-solid fa-plus text-lg block mb-1"></i>ছবি ২</div>
                             </div>
                             <div class="relative border-2 border-dashed border-gray-200 rounded-lg h-24 flex flex-col items-center justify-center cursor-pointer overflow-hidden bg-gray-50">
-                                <input type="file" id="imgInput3" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="previewImage(this, 'imgPre3')">
+                                <input type="file" id="imgInput3" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="previewImage(this, 'imgPre3', 'imgPlaceholder3')">
                                 <img id="imgPre3" class="w-full h-full object-cover hidden">
                                 <div id="imgPlaceholder3" class="text-center text-gray-400 text-xs"><i class="fa-solid fa-plus text-lg block mb-1"></i>ছবি ৩</div>
                             </div>
@@ -387,7 +389,36 @@
         </div>
     </div>
 
+    <!-- ================= IMAGE CROP MODAL ================= -->
+    <div id="cropModal" class="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center p-4 hidden backdrop-blur-sm">
+        <div class="bg-white rounded-2xl p-4 w-full max-w-md shadow-2xl relative overflow-hidden animate-bounce-in">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="font-bold text-gray-800">ছবি ক্রপ করুন (Square)</h3>
+                <button onclick="closeCropModal()" class="text-gray-400 hover:text-red-500 transition"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+
+            <!-- Image Container -->
+            <div class="relative bg-gray-900 rounded-lg overflow-hidden mb-4 h-80 w-full">
+                <img id="imageToCrop" src="" alt="Crop Image" class="block max-w-full">
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="closeCropModal()" class="w-full py-2.5 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition">
+                    বাতিল
+                </button>
+                <button onclick="confirmCrop()" class="w-full py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition">
+                    ✅ ক্রপ করুন
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="globalLoader" class="fixed inset-0 bg-white/80 z-50 flex flex-col items-center justify-center hidden"><div class="animate-spin rounded-full h-10 w-10 border-4 border-blue-600 border-t-transparent"></div><p class="text-xs text-gray-600 font-medium mt-2">দয়া করে অপেক্ষা করুন...</p></div>
+
+    <!-- Cropper.js JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 
     <script>
     function compressImage(file, maxWidth, maxHeight, callback) {
@@ -485,6 +516,14 @@
 
         let currentSlide = 0; let slideInterval; let touchStartX = 0; let touchEndX = 0;
 
+        // === CROPPER LOGIC VARIABLES ===
+        let cropper;
+        let currentCropInputId = null;
+        let currentCropPreviewId = null;
+        let currentCropPlaceholderId = null;
+        let croppedImagesData = {}; 
+        // =============================
+
         document.addEventListener('DOMContentLoaded', () => {
             loadInitialData();
             updateAuthUI();
@@ -541,8 +580,12 @@
                 if(viewId === 'postAdView') {
                     document.getElementById('adForm').reset();
                     document.getElementById('editProductId').value = '';
-                    ['imgPre1','imgPre2','imgPre3'].forEach(id => document.getElementById(id).classList.add('hidden'));
+                    ['imgPre1','imgPre2','imgPre3'].forEach(id => { document.getElementById(id).classList.add('hidden'); document.getElementById(id).src = ''; });
                     ['imgPlaceholder1','imgPlaceholder2','imgPlaceholder3'].forEach(id => document.getElementById(id).style.display = 'block');
+                    
+                    // Reset Cropper Data
+                    croppedImagesData = {}; 
+                    
                     document.getElementById('adTypeModal').classList.remove('hidden');
                 } else { showView(viewId); }
             }
@@ -942,7 +985,6 @@
 
         // UPDATED FUNCTION: View Product Details (Supports Public, Pending Ads, Requests, and Owner Check)
         function viewProductDetails(productId) {
-            // Search Order: Public Ads -> My Ads -> My Requests
             let product = appData.products.find(p => p.id === productId);
             
             if (!product && cachedUserAds && cachedUserAds.length > 0) {
@@ -952,7 +994,6 @@
             if (!product && cachedUserRequests && cachedUserRequests.length > 0) {
                 const req = cachedUserRequests.find(r => r.productId === productId);
                 if(req) {
-                    // Construct a product-like object from the request data
                     product = {
                         id: req.productId,
                         category: 'N/A', 
@@ -960,8 +1001,8 @@
                         imagemain: req.productImage,
                         description: req.productDescription,
                         price: 0, 
-                        adType: 'request', // Custom type to disable buy button
-                        sellerid: currentUser.userid // Since it's a request by the user
+                        adType: 'request', 
+                        sellerid: currentUser.userid
                     };
                 }
             }
@@ -1064,14 +1105,114 @@
             document.getElementById('policiesModal').classList.remove('hidden');
         }
         function closePoliciesModal() { document.getElementById('policiesModal').classList.add('hidden'); }
-        function previewImage(input, previewId) {
-            const file = input.files[0];
-            if (file) {
+
+        // ==========================================
+        // CROPPER & IMAGE PREVIEW LOGIC
+        // ==========================================
+        
+        function previewImage(input, previewId, placeholderId) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
                 const reader = new FileReader();
-                reader.onload = function(e) { const imgEl = document.getElementById(previewId); imgEl.src = e.target.result; imgEl.classList.remove('hidden'); input.nextElementSibling.nextElementSibling.style.display = 'none'; }
+                
+                reader.onload = function(e) {
+                    // মোডালে ছবি সোর্স সেট করা
+                    const imageToCrop = document.getElementById('imageToCrop');
+                    imageToCrop.src = e.target.result;
+                    
+                    // বর্তমান এলিমেন্টের আইডি সেভ করা (পরে কাজে লাগানোর জন্য)
+                    currentCropInputId = input.id;
+                    currentCropPreviewId = previewId;
+                    currentCropPlaceholderId = placeholderId;
+                    
+                    // মোডাল ওপেন করা
+                    document.getElementById('cropModal').classList.remove('hidden');
+                    
+                    // ক্রপার ইনিশিয়ালাইজ করা
+                    initCropper();
+                }
+                
                 reader.readAsDataURL(file);
             }
         }
+
+        function initCropper() {
+            if (cropper) {
+                cropper.destroy();
+            }
+            const image = document.getElementById('imageToCrop');
+            cropper = new Cropper(image, {
+                aspectRatio: 1, // ১:১ (Square)
+                viewMode: 1,    // ছবি বক্সের বাইরে যাবে না
+                dragMode: 'move',
+                autoCropArea: 0.8,
+                restore: false,
+                guides: true,
+                center: true,
+                highlight: false,
+                cropBoxMovable: true,
+                cropBoxResizable: true,
+                toggleDragModeOnDblclick: false,
+            });
+        }
+
+        function confirmCrop() {
+            if (!cropper) return;
+
+            // ক্যানভাস থেকে ক্রপ করা ছবি বের করা
+            const canvas = cropper.getCroppedCanvas({
+                width: 800, // আউটপুট সাইজ (High Quality)
+                height: 800,
+                minWidth: 256,
+                minHeight: 256,
+                maxWidth: 4096,
+                maxHeight: 4096,
+                fillColor: '#fff',
+                imageSmoothingEnabled: true,
+                imageSmoothingQuality: 'high',
+            });
+
+            // বেস ৬৪ স্ট্রিং-এ কনভার্ট করা
+            const croppedBase64 = canvas.toDataURL('image/jpeg', 0.9);
+            
+            // গ্লোবাল ভেরিয়েবলে সেভ করা
+            croppedImagesData[currentCropInputId] = croppedBase64;
+
+            // ফর্মের প্রিভিউ আপডেট করা
+            const imgPreview = document.getElementById(currentCropPreviewId);
+            const placeholder = document.getElementById(currentCropPlaceholderId);
+            
+            if (imgPreview) {
+                imgPreview.src = croppedBase64;
+                imgPreview.classList.remove('hidden');
+            }
+            if (placeholder) {
+                placeholder.style.display = 'none';
+            }
+
+            // মোডাল বন্ধ করা
+            closeCropModal();
+        }
+
+        function closeCropModal() {
+            document.getElementById('cropModal').classList.add('hidden');
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+            
+            // যদি ইউজার ক্রপ ক্যান্সেল করে, তাহলে ফাইল ইনপুট ক্লিয়ার করা
+            if(currentCropInputId) {
+                const input = document.getElementById(currentCropInputId);
+                if(!croppedImagesData[currentCropInputId]) {
+                    input.value = '';
+                }
+            }
+        }
+
+        // ==========================================
+        // END CROPPER LOGIC
+        // ==========================================
 
 // হেল্পার ফাংশন: টেক্সট থেকে প্লেসহোল্ডার ইমেজ তৈরি করা
 function generatePlaceholderImage(text) {
@@ -1151,8 +1292,9 @@ function generatePlaceholderImage(text) {
             
             // --- অটো প্লেসহোল্ডার জেনারেট লজিক ---
             let hasImage = false;
+            // Check cropped data or file input
             files.forEach(f => {
-                if(f.el.files && f.el.files[0]) hasImage = true;
+                if(croppedImagesData[f.el.id] || (f.el.files && f.el.files[0])) hasImage = true;
             });
 
             // যদি কোনো ইমেজ না থাকে, তবে প্রোডাক্টের নাম দিয়ে ইমেজ তৈরি করা
@@ -1160,11 +1302,9 @@ function generatePlaceholderImage(text) {
                 const productName = document.getElementById('adName').value || "Product";
                 const placeholderData = generatePlaceholderImage(productName);
                 imagesToUpload[0] = { data: placeholderData, name: 'placeholder.jpg' };
-                // বাকি দুটি ফাইল খালি রাখা
                 imagesToUpload[1] = null;
                 imagesToUpload[2] = null;
                 
-                // যেহেতু আমরা ম্যানুয়ালি ডাটা সেট করে দিয়েছি, তাই লুপ এড়িয়ে সরাসরি সেন্ড করব
                 const adPayload = { id: editId || null, userId: currentUser.userid, userEmail: currentUser.email, name: document.getElementById('adName').value, category: document.getElementById('adCategory').value, price: finalPrice, discountprice: finalDiscount, description: finalDescription, images: imagesToUpload, adType: selectedAdType };
                 const action = editId ? 'updateAd' : 'submitAd';
                 google.script.run.withSuccessHandler(res => {
@@ -1175,6 +1315,7 @@ function generatePlaceholderImage(text) {
                         document.getElementById('adForm').reset();
                         ['imgPre1','imgPre2','imgPre3'].forEach(id => document.getElementById(id).classList.add('hidden'));
                         ['imgPlaceholder1','imgPlaceholder2','imgPlaceholder3'].forEach(id => document.getElementById(id).style.display = 'block');
+                        croppedImagesData = {}; // Reset crop data
                         selectedAdType = 'sell'; showView('homeView');
                     } else { Swal.fire({ icon: 'error', title: 'ব্যর্থ', text: res.error }); }
                 }).withFailureHandler(err => { showLoader(false); Swal.fire({ icon: 'error', title: 'সার্ভার এরর', text: err }); })[action](adPayload, sessionToken);
@@ -1182,7 +1323,7 @@ function generatePlaceholderImage(text) {
             }
             // -------------------------------------------------
 
-            // যদি ইউজার ইমেজ আপলোড করে থাকে, তবে স্বাভাবিক প্রসেস (আগের মতো)
+            // যদি ইউজার ইমেজ আপলোড করে থাকে, তবে স্বাভাবিক প্রসেস
             let loadedCount = 0;
             const checkAndSend = () => {
                 loadedCount++;
@@ -1197,14 +1338,35 @@ function generatePlaceholderImage(text) {
                             document.getElementById('adForm').reset();
                             ['imgPre1','imgPre2','imgPre3'].forEach(id => { document.getElementById(id).classList.add('hidden'); document.getElementById(id).src = ''; });
                             ['imgPlaceholder1','imgPlaceholder2','imgPlaceholder3'].forEach(id => document.getElementById(id).style.display = 'block');
+                            croppedImagesData = {}; // Reset crop data
                             selectedAdType = 'sell'; showView('homeView');
                         } else { Swal.fire({ icon: 'error', title: 'ব্যর্থ', text: res.error }); }
                     }).withFailureHandler(err => { showLoader(false); Swal.fire({ icon: 'error', title: 'সার্ভার এরর', text: err }); })[action](adPayload, sessionToken);
                 }
             };
             files.forEach((f, idx) => {
-                if(f.el.files && f.el.files[0]) { compressImage(f.el.files[0], 800, 800, (base64String) => { imagesToUpload[idx] = { data: base64String, name: f.name }; checkAndSend(); }); } else {
-                    if(editId) { const existingImg = document.getElementById('imgPre' + (idx+1)).src; imagesToUpload[idx] = existingImg ? { data: existingImg, name: f.name } : null; } else { imagesToUpload[idx] = null; }
+                
+                // === NEW LOGIC: Check for cropped data first ===
+                if (croppedImagesData[f.el.id]) {
+                    imagesToUpload[idx] = { data: croppedImagesData[f.el.id], name: f.name + '_cropped.jpg' };
+                    checkAndSend();
+                    return; // Skip file processing
+                }
+                // ===============================================
+
+                // Existing logic: Handle normal file upload
+                if(f.el.files && f.el.files[0]) { 
+                    compressImage(f.el.files[0], 800, 800, (base64String) => { 
+                        imagesToUpload[idx] = { data: base64String, name: f.name }; 
+                        checkAndSend(); 
+                    }); 
+                } else {
+                    if(editId) { 
+                        const existingImg = document.getElementById('imgPre' + (idx+1)).src; 
+                        imagesToUpload[idx] = existingImg ? { data: existingImg, name: f.name } : null; 
+                    } else { 
+                        imagesToUpload[idx] = null; 
+                    }
                     checkAndSend();
                 }
             });
@@ -1240,7 +1402,7 @@ function generatePlaceholderImage(text) {
                 Swal.fire({
                     icon: 'error',
                     title: 'ভুল মোবাইল নম্বর!',
-                    text: 'মোবাইল নম্বরটি অবশ্যই 01 দিয়ে শুরু হতে হবে এবং মোট ১১ সংখ্যার হতে হবে (যেমন: 017XXXXXXXX)।',
+                    text: 'মোবাইল নাম্বারটি অবশ্যই 01 দিয়ে শুরু হতে হবে এবং মোট ১১ সংখ্যার হতে হবে (যেমন: 017XXXXXXXX)।',
                     confirmButtonColor: '#d33'
                 });
                 return;
@@ -1462,6 +1624,10 @@ function generatePlaceholderImage(text) {
                 if (res.success) {
                     const ad = res.ads.find(a => a.id === adId);
                     if (!ad) return;
+                    
+                    // Reset cropper data for this new session
+                    croppedImagesData = {};
+
                     document.getElementById('editProductId').value = ad.id;
                     document.getElementById('adName').value = ad.name;
                     document.getElementById('adCategory').value = ad.category;
@@ -1574,7 +1740,6 @@ function toggleMyRequests() {
         
         // লজিক: যদি ক্যাশে ডাটা থাকে তবে সেটি দেখাবে। 
         // যদি ক্যাশ ফাঁকা থাকে (নতুন রিকোয়েস্ট সাবমিটের পর এমনটা হয়), তবে সার্ভার থেকে ফ্রেশ ডাটা আনবে।
-        // HTML এর ভেতরে কী আছে তা চেক করা হবে না, যাতে পুরাতন ডাটা দেখার ভুল না হয়।
         
         if (cachedUserRequests && cachedUserRequests.length > 0) {
             renderUserRequestsList(cachedUserRequests);
